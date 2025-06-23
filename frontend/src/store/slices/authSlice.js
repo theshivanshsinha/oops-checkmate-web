@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://oops-checkmate-web.onrender.com/api";
 
 // Async thunks
 export const loginUser = createAsyncThunk(
@@ -15,7 +15,9 @@ export const loginUser = createAsyncThunk(
       localStorage.setItem("token", response.data.token);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data.error);
+      return rejectWithValue(
+        error.response?.data?.error || "Login failed"
+      );
     }
   }
 );
@@ -32,7 +34,9 @@ export const signupUser = createAsyncThunk(
       localStorage.setItem("token", response.data.token);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data.error);
+      return rejectWithValue(
+        error.response?.data?.error || "Signup failed"
+      );
     }
   }
 );
@@ -47,7 +51,9 @@ export const googleAuth = createAsyncThunk(
       localStorage.setItem("token", response.data.token);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data.error);
+      return rejectWithValue(
+        error.response?.data?.error || "Google authentication failed"
+      );
     }
   }
 );
@@ -88,6 +94,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
     },
     clearError: (state) => {
       state.error = null;
