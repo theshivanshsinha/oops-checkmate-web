@@ -3,6 +3,8 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 
+const API_BASE_URL = "https://oops-checkmate-web.onrender.com/api";
+
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -15,7 +17,7 @@ export default function Login() {
     setError("");
     try {
       const token = credentialResponse.credential;
-      const res = await axios.post("http://localhost:5000/api/google-auth", {
+      const res = await axios.post(`${API_BASE_URL}/google-auth`, {
         token,
       });
 
@@ -37,7 +39,7 @@ export default function Login() {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/login", {
+      const res = await axios.post(`${API_BASE_URL}/login`, {
         email,
         password,
       });
