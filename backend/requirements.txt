@@ -1,0 +1,8 @@
+Flask==2.3.3
+Flask-Cors==4.0.0
+pymongo[srv]==4.5.0
+Werkzeug==2.3.7
+PyJWT==2.8.0
+google-auth==2.23.3
+python-chess==1.999
+gunicorn==21.2.0
