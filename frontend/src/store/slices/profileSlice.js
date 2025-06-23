@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://oops-checkmate-web.onrender.com/api";
 
 // Async thunks
 export const fetchProfile = createAsyncThunk(
@@ -14,7 +14,9 @@ export const fetchProfile = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data.error);
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch profile"
+      );
     }
   }
 );
@@ -33,7 +35,9 @@ export const updateProfile = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data.error);
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to update profile"
+      );
     }
   }
 );
@@ -52,7 +56,9 @@ export const updateGameStats = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data.error);
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to update game stats"
+      );
     }
   }
 );
