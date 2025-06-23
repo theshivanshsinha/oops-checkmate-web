@@ -3,18 +3,14 @@ import { useSelector, useDispatch } from "react-redux";
 import {
   User,
   Trophy,
-  Target,
   Settings,
   Calendar,
-  Star,
-  Award,
   TrendingUp,
   Edit3,
   Save,
   X,
   Volume2,
   VolumeX,
-  Eye,
   Crown,
 } from "lucide-react";
 import {
@@ -32,7 +28,6 @@ export default function Profile() {
     achievements,
     preferences,
     isLoading,
-    error,
   } = useSelector((state) => state.profile);
 
   const [activeTab, setActiveTab] = useState("overview");
