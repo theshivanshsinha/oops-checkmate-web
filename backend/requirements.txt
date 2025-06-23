@@ -6,3 +6,6 @@ PyJWT==2.8.0
 google-auth==2.23.3
 python-chess==1.999
 gunicorn==21.2.0
+requests==2.31.0
+urllib3==2.0.7
+certifi==2023.7.22
