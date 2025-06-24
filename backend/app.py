@@ -21,7 +21,8 @@ GOOGLE_CLIENT_ID = '612587465923-6svijnd7e3o1hn9jj1tdnlpvksun9j1p.apps.googleuse
 
 # MongoDB connection
 try:
-    client = MongoClient('mongodb://localhost:27017/')
+    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
+    client = MongoClient(MONGODB_URI)
     db = client['chess_app']
     users_collection = db['users']
     profiles_collection = db['profiles']
