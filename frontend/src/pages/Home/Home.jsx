@@ -199,6 +199,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-sm opacity-75">
             © 2025 Oops, Checkmate! - Master the game, one move at a time.
+            Made with love by Kumar Shivansh Sinha
           </p>
         </div>
       </footer>
