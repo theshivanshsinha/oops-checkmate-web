@@ -39,6 +39,10 @@ export default function ChessGame() {
   const [showSettings, setShowSettings] = useState(false);
   const [showResignConfirm, setShowResignConfirm] = useState(false);
 
+  // Click-to-move states
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [possibleMoves, setPossibleMoves] = useState([]);
+
   // Update local game state when Redux state changes
   useEffect(() => {
     if (currentGame.fen) {
@@ -70,6 +74,10 @@ export default function ChessGame() {
       currentGame.gameStatus === "playing" &&
       !currentGame.isAIThinking
     ) {
+      // Clear selection when AI is about to move
+      setSelectedSquare(null);
+      setPossibleMoves([]);
+
       // Add delay for better UX
       const timer = setTimeout(() => {
         dispatch(getAIMove({ fen: currentGame.fen, difficulty: aiDifficulty }));
@@ -113,17 +121,83 @@ export default function ChessGame() {
     [soundEnabled]
   );
 
-  // Handle piece drop
-  const onDrop = useCallback(
-    async (sourceSquare, targetSquare) => {
+  // Get possible moves for selected piece
+  const getPossibleMoves = useCallback(
+    (square) => {
+      if (!currentGame.isPlayerTurn || currentGame.gameStatus !== "playing") {
+        return [];
+      }
+
+      const tempGame = new Chess(currentGame.fen);
+      const moves = tempGame.moves({ square, verbose: true });
+      return moves.map((move) => move.to);
+    },
+    [currentGame.fen, currentGame.isPlayerTurn, currentGame.gameStatus]
+  );
+
+  // Handle square click
+  const onSquareClick = useCallback(
+    (square) => {
       if (
         !currentGame.isPlayerTurn ||
         currentGame.gameStatus !== "playing" ||
         currentGame.isAIThinking
       ) {
-        return false;
+        return;
       }
 
+      const tempGame = new Chess(currentGame.fen);
+      const piece = tempGame.get(square);
+
+      // If no piece is selected
+      if (!selectedSquare) {
+        // If clicked square has a white piece (player's piece)
+        if (piece && piece.color === "w") {
+          setSelectedSquare(square);
+          setPossibleMoves(getPossibleMoves(square));
+        }
+        return;
+      }
+
+      // If same square is clicked again, deselect
+      if (selectedSquare === square) {
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        return;
+      }
+
+      // If clicked on another white piece, select it instead
+      if (piece && piece.color === "w") {
+        setSelectedSquare(square);
+        setPossibleMoves(getPossibleMoves(square));
+        return;
+      }
+
+      // If clicked on a possible move square, make the move
+      if (possibleMoves.includes(square)) {
+        makePlayerMove(selectedSquare, square);
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+      } else {
+        // Clicked on invalid square, deselect
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+      }
+    },
+    [
+      selectedSquare,
+      possibleMoves,
+      currentGame.isPlayerTurn,
+      currentGame.gameStatus,
+      currentGame.isAIThinking,
+      currentGame.fen,
+      getPossibleMoves,
+    ]
+  );
+
+  // Make player move (shared logic for drag and click)
+  const makePlayerMove = useCallback(
+    async (sourceSquare, targetSquare) => {
       try {
         const move = `${sourceSquare}${targetSquare}`;
 
@@ -189,6 +263,26 @@ export default function ChessGame() {
     [currentGame, dispatch, aiDifficulty, playSound]
   );
 
+  // Handle piece drop (for drag and drop)
+  const onDrop = useCallback(
+    async (sourceSquare, targetSquare) => {
+      if (
+        !currentGame.isPlayerTurn ||
+        currentGame.gameStatus !== "playing" ||
+        currentGame.isAIThinking
+      ) {
+        return false;
+      }
+
+      // Clear selection when drag and drop is used
+      setSelectedSquare(null);
+      setPossibleMoves([]);
+
+      return await makePlayerMove(sourceSquare, targetSquare);
+    },
+    [currentGame, makePlayerMove]
+  );
+
   // Handle AI move completion
   useEffect(() => {
     if (currentGame.gameHistory.length > 0) {
@@ -226,6 +320,8 @@ export default function ChessGame() {
     dispatch(clearCurrentGame());
     setGame(new Chess());
     setLastMove(null);
+    setSelectedSquare(null);
+    setPossibleMoves([]);
     setShowResignConfirm(false);
   }, [dispatch]);
 
@@ -242,6 +338,8 @@ export default function ChessGame() {
       })
     );
     setShowResignConfirm(false);
+    setSelectedSquare(null);
+    setPossibleMoves([]);
   }, [dispatch, aiDifficulty]);
 
   // Format time
@@ -280,6 +378,40 @@ export default function ChessGame() {
     { value: 4, label: "Hard", icon: "🎖️" },
     { value: 5, label: "Expert", icon: "👑" },
   ];
+
+  // Create custom square styles
+  const getCustomSquareStyles = () => {
+    const styles = {};
+
+    // Highlight last move
+    if (lastMove) {
+      styles[lastMove.from] = {
+        backgroundColor: "rgba(255, 255, 0, 0.4)",
+      };
+      styles[lastMove.to] = {
+        backgroundColor: "rgba(255, 255, 0, 0.4)",
+      };
+    }
+
+    // Highlight selected square
+    if (selectedSquare) {
+      styles[selectedSquare] = {
+        backgroundColor: "rgba(0, 255, 0, 0.4)",
+        border: "2px solid #00ff00",
+      };
+    }
+
+    // Highlight possible moves
+    possibleMoves.forEach((square) => {
+      styles[square] = {
+        backgroundColor: "rgba(0, 255, 255, 0.3)",
+        border: "2px solid #00ffff",
+        borderRadius: "50%",
+      };
+    });
+
+    return styles;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
@@ -395,20 +527,12 @@ export default function ChessGame() {
                 <Chessboard
                   position={currentGame.fen}
                   onPieceDrop={onDrop}
+                  onSquareClick={onSquareClick}
                   customBoardStyle={{
                     borderRadius: "8px",
                     boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
                   }}
-                  customSquareStyles={{
-                    ...(lastMove && {
-                      [lastMove.from]: {
-                        backgroundColor: "rgba(255, 255, 0, 0.4)",
-                      },
-                      [lastMove.to]: {
-                        backgroundColor: "rgba(255, 255, 0, 0.4)",
-                      },
-                    }),
-                  }}
+                  customSquareStyles={getCustomSquareStyles()}
                 />
               </div>
 
@@ -422,6 +546,14 @@ export default function ChessGame() {
                       <span className="text-green-400 text-sm">Your turn</span>
                     )}
                 </div>
+
+                {/* Click-to-move instructions */}
+                {selectedSquare && (
+                  <div className="mt-2 text-sm text-cyan-400">
+                    Click on a highlighted square to move, or click the selected
+                    piece to cancel
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -476,6 +608,28 @@ export default function ChessGame() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Game Controls Info */}
+            <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6">
+              <h3 className="text-xl font-bold mb-4">How to Play</h3>
+              <div className="space-y-2 text-sm text-gray-300">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                  <span>Click a piece to select it</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-cyan-400 rounded-full"></div>
+                  <span>Highlighted squares show possible moves</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                  <span>Yellow squares show the last move</span>
+                </div>
+                <div className="mt-2 text-xs text-gray-400">
+                  You can also drag and drop pieces to move them.
+                </div>
+              </div>
             </div>
 
             {/* Captured Pieces - Now uses Redux state */}
@@ -569,19 +723,70 @@ export default function ChessGame() {
                 {currentGame.gameHistory.length === 0 ? (
                   <p className="text-gray-500 text-sm">No moves yet</p>
                 ) : (
-                  currentGame.gameHistory.map((move, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span className="text-gray-400">
-                        {Math.floor(index / 2) + 1}.
-                      </span>
-                      <span className="font-mono">{move.san}</span>
-                      <span className="text-gray-400">
-                        {move.color === "w" ? "You" : "AI"}
-                      </span>
-                    </div>
-                  ))
+                  (() => {
+                    const moves = [];
+                    for (
+                      let i = 0;
+                      i < currentGame.gameHistory.length;
+                      i += 2
+                    ) {
+                      const moveNumber = Math.floor(i / 2) + 1;
+                      const whiteMove = currentGame.gameHistory[i];
+                      const blackMove = currentGame.gameHistory[i + 1];
+
+                      moves.push(
+                        <div
+                          key={moveNumber}
+                          className="flex items-center gap-2 text-sm py-1"
+                        >
+                          <span className="text-gray-400 w-6 text-right">
+                            {moveNumber}.
+                          </span>
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono text-white">
+                                {whiteMove?.san || ""}
+                              </span>
+                              {whiteMove && (
+                                <span className="text-green-400 text-xs">
+                                  ({whiteMove.from}-{whiteMove.to})
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono text-white">
+                                {blackMove?.san || ""}
+                              </span>
+                              {blackMove && (
+                                <span className="text-yellow-400 text-xs">
+                                  ({blackMove.from}-{blackMove.to})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return moves;
+                  })()
                 )}
               </div>
+
+              {/* Legend */}
+              {currentGame.gameHistory.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <span className="text-green-400">●</span>
+                      <span>You (White)</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-yellow-400">●</span>
+                      <span>AI (Black)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
