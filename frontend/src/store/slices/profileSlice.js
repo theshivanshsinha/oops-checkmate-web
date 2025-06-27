@@ -38,48 +38,7 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
-export const updateGameStats = createAsyncThunk(
-  "profile/updateGameStats",
-  async (gameResult, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${API_BASE_URL}/update-game-stats`,
-        gameResult,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data.error);
-    }
-  }
-);
-
-// New thunks for enhanced features
-export const uploadProfilePhoto = createAsyncThunk(
-  "profile/uploadProfilePhoto",
-  async (formData, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${API_BASE_URL}/upload-profile-photo`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data.error);
-    }
-  }
-);
-
+// Enhanced Friends System Thunks
 export const fetchFriends = createAsyncThunk(
   "profile/fetchFriends",
   async (_, { rejectWithValue }) => {
@@ -95,14 +54,35 @@ export const fetchFriends = createAsyncThunk(
   }
 );
 
-export const fetchFollowers = createAsyncThunk(
-  "profile/fetchFollowers",
+export const fetchIncomingRequests = createAsyncThunk(
+  "profile/fetchIncomingRequests",
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/followers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        `${API_BASE_URL}/friend-requests/incoming`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const fetchOutgoingRequests = createAsyncThunk(
+  "profile/fetchOutgoingRequests",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${API_BASE_URL}/friend-requests/outgoing`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response.data.error);
@@ -125,14 +105,108 @@ export const fetchSuggestions = createAsyncThunk(
   }
 );
 
-export const followUser = createAsyncThunk(
-  "profile/followUser",
-  async (userId, { rejectWithValue }) => {
+export const sendFriendRequest = createAsyncThunk(
+  "profile/sendFriendRequest",
+  async ({ userId, message }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${API_BASE_URL}/follow/${userId}`,
-        {},
+        `${API_BASE_URL}/send-friend-request`,
+        { userId, message },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return { ...response.data, userId };
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const acceptFriendRequest = createAsyncThunk(
+  "profile/acceptFriendRequest",
+  async (requestId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_BASE_URL}/accept-friend-request`,
+        { requestId },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return { ...response.data, requestId };
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const declineFriendRequest = createAsyncThunk(
+  "profile/declineFriendRequest",
+  async (requestId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_BASE_URL}/decline-friend-request`,
+        { requestId },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return { ...response.data, requestId };
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const cancelFriendRequest = createAsyncThunk(
+  "profile/cancelFriendRequest",
+  async (requestId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_BASE_URL}/cancel-friend-request`,
+        { requestId },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return { ...response.data, requestId };
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const removeFriend = createAsyncThunk(
+  "profile/removeFriend",
+  async (friendId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_BASE_URL}/remove-friend`,
+        { friendId },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return { ...response.data, friendId };
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const searchUsers = createAsyncThunk(
+  "profile/searchUsers",
+  async (query, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${API_BASE_URL}/search-users?q=${encodeURIComponent(query)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -144,34 +218,20 @@ export const followUser = createAsyncThunk(
   }
 );
 
-// Missing unfollowUser thunk
-export const unfollowUser = createAsyncThunk(
-  "profile/unfollowUser",
-  async (userId, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.delete(
-        `${API_BASE_URL}/unfollow/${userId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data.error);
-    }
-  }
-);
-
-export const subscribeNewsletter = createAsyncThunk(
-  "profile/subscribeNewsletter",
-  async (newsletterId, { rejectWithValue }) => {
+export const uploadProfilePhoto = createAsyncThunk(
+  "profile/uploadProfilePhoto",
+  async (imageData, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${API_BASE_URL}/subscribe-newsletter`,
-        { newsletterId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_BASE_URL}/upload-profile-photo`,
+        imageData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
       );
       return response.data;
     } catch (error) {
@@ -204,8 +264,10 @@ const profileSlice = createSlice({
       autoPromoteToQueen: false,
     },
     friends: [],
-    followers: [],
+    incomingRequests: [],
+    outgoingRequests: [],
     suggestions: [],
+    searchResults: [],
     newsletters: [],
     isLoading: false,
     error: null,
@@ -216,6 +278,9 @@ const profileSlice = createSlice({
     },
     clearProfileError: (state) => {
       state.error = null;
+    },
+    clearSearchResults: (state) => {
+      state.searchResults = [];
     },
   },
   extraReducers: (builder) => {
@@ -237,85 +302,91 @@ const profileSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+
       // Update Profile
-      .addCase(updateProfile.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
       .addCase(updateProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
         state.data = { ...state.data, ...action.payload.profile };
       })
-      .addCase(updateProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      // Update Game Stats
-      .addCase(updateGameStats.fulfilled, (state, action) => {
-        state.stats = action.payload.stats;
-        if (action.payload.achievements) {
-          state.achievements = action.payload.achievements;
-        }
-      })
+
       // Upload Profile Photo
       .addCase(uploadProfilePhoto.fulfilled, (state, action) => {
         if (state.data) {
           state.data.profilePhoto = action.payload.profilePhoto;
         }
       })
-      .addCase(uploadProfilePhoto.rejected, (state, action) => {
-        state.error = action.payload;
-      })
+
       // Fetch Friends
       .addCase(fetchFriends.fulfilled, (state, action) => {
         state.friends = action.payload.friends || [];
       })
-      .addCase(fetchFriends.rejected, (state, action) => {
-        state.error = action.payload;
+
+      // Fetch Incoming Requests
+      .addCase(fetchIncomingRequests.fulfilled, (state, action) => {
+        state.incomingRequests = action.payload.requests || [];
       })
-      // Fetch Followers
-      .addCase(fetchFollowers.fulfilled, (state, action) => {
-        state.followers = action.payload.followers || [];
+
+      // Fetch Outgoing Requests
+      .addCase(fetchOutgoingRequests.fulfilled, (state, action) => {
+        state.outgoingRequests = action.payload.requests || [];
       })
-      .addCase(fetchFollowers.rejected, (state, action) => {
-        state.error = action.payload;
-      })
+
       // Fetch Suggestions
       .addCase(fetchSuggestions.fulfilled, (state, action) => {
         state.suggestions = action.payload.suggestions || [];
       })
-      .addCase(fetchSuggestions.rejected, (state, action) => {
-        state.error = action.payload;
+
+      // Send Friend Request
+      .addCase(sendFriendRequest.fulfilled, (state, action) => {
+        state.suggestions = state.suggestions.filter(
+          (s) => s.id !== action.payload.userId
+        );
+        state.searchResults = state.searchResults.map((user) =>
+          user.id === action.payload.userId
+            ? { ...user, relationshipStatus: "request_sent" }
+            : user
+        );
       })
-      // Follow User
-      .addCase(followUser.fulfilled, (state, action) => {
-        // Update friends list after following
-        if (action.payload.friend) {
-          state.friends.push(action.payload.friend);
-          // Remove from suggestions
-          state.suggestions = state.suggestions.filter(
-            (s) => s.id !== action.payload.friend.id
-          );
-        }
+
+      // Accept Friend Request
+      .addCase(acceptFriendRequest.fulfilled, (state, action) => {
+        state.incomingRequests = state.incomingRequests.filter(
+          (req) => req.requestId !== action.payload.requestId
+        );
       })
-      .addCase(followUser.rejected, (state, action) => {
-        state.error = action.payload;
+
+      // Decline Friend Request
+      .addCase(declineFriendRequest.fulfilled, (state, action) => {
+        state.incomingRequests = state.incomingRequests.filter(
+          (req) => req.requestId !== action.payload.requestId
+        );
       })
-      // Unfollow User
-      .addCase(unfollowUser.fulfilled, (state, action) => {
-        // Remove from friends list after unfollowing
-        if (action.payload.userId) {
-          state.friends = state.friends.filter(
-            (friend) => friend.id !== action.payload.userId
-          );
-        }
+
+      // Cancel Friend Request
+      .addCase(cancelFriendRequest.fulfilled, (state, action) => {
+        state.outgoingRequests = state.outgoingRequests.filter(
+          (req) => req.requestId !== action.payload.requestId
+        );
       })
-      .addCase(unfollowUser.rejected, (state, action) => {
-        state.error = action.payload;
+
+      // Remove Friend
+      .addCase(removeFriend.fulfilled, (state, action) => {
+        state.friends = state.friends.filter(
+          (friend) => friend.id !== action.payload.friendId
+        );
       })
+
+      // Search Users
+      .addCase(searchUsers.fulfilled, (state, action) => {
+        state.searchResults = action.payload.users || [];
+      })
+
+      // Fetch Newsletters
+      .addCase(fetchNewsletters.fulfilled, (state, action) => {
+        state.newsletters = action.payload.newsletters || [];
+      })
+
       // Subscribe Newsletter
       .addCase(subscribeNewsletter.fulfilled, (state, action) => {
-        // Update newsletter subscription status
         const newsletter = state.newsletters.find(
           (n) => n.id === action.payload.newsletterId
         );
@@ -323,11 +394,49 @@ const profileSlice = createSlice({
           newsletter.subscribed = action.payload.subscribed;
         }
       })
-      .addCase(subscribeNewsletter.rejected, (state, action) => {
-        state.error = action.payload;
-      });
+
+      // Error handling
+      .addMatcher(
+        (action) => action.type.endsWith("/rejected"),
+        (state, action) => {
+          state.error = action.payload;
+          state.isLoading = false;
+        }
+      );
   },
 });
+export const fetchNewsletters = createAsyncThunk(
+  "profile/fetchNewsletters",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_BASE_URL}/newsletters`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
 
-export const { updatePreferences, clearProfileError } = profileSlice.actions;
+export const subscribeNewsletter = createAsyncThunk(
+  "profile/subscribeNewsletter",
+  async (newsletterId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_BASE_URL}/subscribe-newsletter`,
+        { newsletterId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data.error);
+    }
+  }
+);
+
+export const { updatePreferences, clearProfileError, clearSearchResults } =
+  profileSlice.actions;
 export default profileSlice.reducer;
