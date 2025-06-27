@@ -22,13 +22,7 @@ import tempfile
 app = Flask(__name__)
 
 # Enhanced CORS configuration
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["http://localhost:3000"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
+CORS(app)
 
 # Configuration
 app.config['SECRET_KEY'] = 'f23a3fc8e3bc0e4f4e9b7a2bfae81e293217a884f43c038bce2f1932299b3ff1'
@@ -47,7 +41,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # MongoDB connection
 try:
-    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
+    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')Add commentMore actions
     client = MongoClient(MONGODB_URI)
     db = client['chess_app']
     users_collection = db['users']
