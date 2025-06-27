@@ -22,8 +22,7 @@ import tempfile
 app = Flask(__name__)
 
 # Enhanced CORS configuration
-CORS(app)
-# Enhanced CORS configuration
+CORS(app, origins=["https://oops-checkmate-web-1.onrender.com", "http://localhost:3000"])
 
 # Handle preflight requests
 @app.before_request
