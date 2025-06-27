@@ -23,6 +23,25 @@ app = Flask(__name__)
 
 # Enhanced CORS configuration
 CORS(app)
+# Enhanced CORS configuration
+
+# Handle preflight requests
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        return response
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
+    response.headers.add('Cross-Origin-Embedder-Policy', 'require-corp')
+    return response
+
+
 
 # Configuration
 app.config['SECRET_KEY'] = 'f23a3fc8e3bc0e4f4e9b7a2bfae81e293217a884f43c038bce2f1932299b3ff1'
