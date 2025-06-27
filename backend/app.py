@@ -41,7 +41,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # MongoDB connection
 try:
-    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')Add commentMore actions
+    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
     client = MongoClient(MONGODB_URI)
     db = client['chess_app']
     users_collection = db['users']
