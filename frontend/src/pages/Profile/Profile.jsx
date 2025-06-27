@@ -785,7 +785,7 @@ export default function Profile() {
                     src={
                       profile.profilePhoto.startsWith("data:")
                         ? profile.profilePhoto
-                        : `http://localhost:5000${profile.profilePhoto}`
+                        : `https://oops-checkmate-web.onrender.com/api${profile.profilePhoto}`
                     }
                     alt="Profile"
                     className="w-full h-full object-cover"
@@ -1315,7 +1315,7 @@ export default function Profile() {
                                 src={
                                   user.profilePhoto.startsWith("data:")
                                     ? user.profilePhoto
-                                    : `http://localhost:5000${user.profilePhoto}`
+                                    : `https://oops-checkmate-web.onrender.com/api${user.profilePhoto}`
                                 }
                                 alt={user.name}
                                 className="w-full h-full object-cover"
@@ -1378,7 +1378,7 @@ export default function Profile() {
                                 src={
                                   request.profilePhoto.startsWith("data:")
                                     ? request.profilePhoto
-                                    : `http://localhost:5000${request.profilePhoto}`
+                                    : `https://oops-checkmate-web.onrender.com/api${request.profilePhoto}`
                                 }
                                 alt={request.name}
                                 className="w-full h-full object-cover"
@@ -1447,7 +1447,7 @@ export default function Profile() {
                                   src={
                                     friend.profilePhoto.startsWith("data:")
                                       ? friend.profilePhoto
-                                      : `http://localhost:5000${friend.profilePhoto}`
+                                      : `https://oops-checkmate-web.onrender.com/api${friend.profilePhoto}`
                                   }
                                   alt={friend.name}
                                   className="w-full h-full object-cover"
@@ -1541,7 +1541,7 @@ export default function Profile() {
                             src={
                               suggestion.profilePhoto.startsWith("data:")
                                 ? suggestion.profilePhoto
-                                : `http://localhost:5000${suggestion.profilePhoto}`
+                                : `https://oops-checkmate-web.onrender.com/api${suggestion.profilePhoto}`
                             }
                             alt={suggestion.name}
                             className="w-full h-full object-cover"
