@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 
-const API_BASE_URL = "https://oops-checkmate-web.onrender.com/api";
+const API_BASE_URL = "https://oops-checkmate-web-1.onrender.com";
 
 export default function Login() {
   const navigate = useNavigate();
