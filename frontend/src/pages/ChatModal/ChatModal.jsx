@@ -3,8 +3,6 @@ import {
   MessageCircle,
   Send,
   X,
-  Phone,
-  Video,
   MoreHorizontal,
   Smile,
 } from "lucide-react";
@@ -30,12 +28,10 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
   useEffect(() => {
     if (isOpen && friend) {
       createOrGetChatRoom();
-      // Focus input when modal opens
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 100);
     } else {
-      // Reset state when modal closes
       setMessages([]);
       setNewMessage("");
       setRoomId(null);
@@ -55,7 +51,6 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
           },
         }
       );
-
       const data = await response.json();
       if (response.ok) {
         setRoomId(data.roomId);
@@ -80,7 +75,6 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
           },
         }
       );
-
       const data = await response.json();
       if (response.ok) {
         setMessages(data.messages || []);
@@ -99,7 +93,6 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
     const messageContent = newMessage.trim();
     setNewMessage("");
 
-    // Optimistically add message to UI
     const tempMessage = {
       id: `temp-${Date.now()}`,
       content: messageContent,
@@ -115,22 +108,23 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
     setMessages((prev) => [...prev, tempMessage]);
 
     try {
-      const response = await fetch("https://oops-checkmate-web.onrender.com/api/chat/send", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          roomId: roomId,
-          content: messageContent,
-          type: "text",
-        }),
-      });
-
+      const response = await fetch(
+        "https://oops-checkmate-web.onrender.com/api/chat/send",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            roomId: roomId,
+            content: messageContent,
+            type: "text",
+          }),
+        }
+      );
       const data = await response.json();
       if (response.ok) {
-        // Replace temp message with real message
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === tempMessage.id
@@ -139,12 +133,10 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
           )
         );
       } else {
-        // Remove temp message on error
         setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
         console.error("Error sending message:", data.error);
       }
     } catch (error) {
-      // Remove temp message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
       console.error("Error sending message:", error);
     }
@@ -213,7 +205,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                     src={
                       friend.profilePhoto.startsWith("data:")
                         ? friend.profilePhoto
-                        : https://oops-checkmate-web.onrender.com/api${friend.profilePhoto}`
+                        : `https://oops-checkmate-web.onrender.com/api${friend.profilePhoto}`
                     }
                     alt={friend.name}
                     className="w-full h-full object-cover"
@@ -255,10 +247,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
           </div>
           <div className="flex gap-2">
             <button className="p-2 hover:bg-gray-700 rounded-lg transition duration-200 group">
-              <MoreHorizontal
-                size={16}
-                className="text-gray-400 group-hover:text-white"
-              />
+              <MoreHorizontal size={16} className="text-gray-400 group-hover:text-white" />
             </button>
             <button
               onClick={onClose}
@@ -286,7 +275,6 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
           ) : (
             groupMessagesByDate(messages).map((group, groupIndex) => (
               <div key={groupIndex}>
-                {/* Date separator */}
                 <div className="flex items-center justify-center my-4">
                   <div className="bg-gray-700 px-3 py-1 rounded-full text-xs text-gray-300">
                     {new Date(group.date).toLocaleDateString([], {
@@ -297,7 +285,6 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                   </div>
                 </div>
 
-                {/* Messages for this date */}
                 {group.messages.map((message, index) => {
                   const isCurrentUser = message.senderId === currentUser?.id;
                   const showAvatar =
@@ -312,7 +299,6 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                         isCurrentUser ? "justify-end" : "justify-start"
                       } mb-2`}
                     >
-                      {/* Avatar for other user */}
                       {!isCurrentUser && (
                         <div className="w-8 h-8 mr-2 flex-shrink-0">
                           {showAvatar ? (
@@ -335,12 +321,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                         </div>
                       )}
 
-                      {/* Message bubble */}
-                      <div
-                        className={`max-w-xs ${
-                          isCurrentUser ? "ml-12" : "mr-12"
-                        }`}
-                      >
+                      <div className={`max-w-xs ${isCurrentUser ? "ml-12" : "mr-12"}`}>
                         <div
                           className={`px-4 py-2 rounded-2xl ${
                             isCurrentUser
@@ -348,9 +329,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                               : "bg-gray-700 text-white rounded-bl-md"
                           } ${message.sending ? "opacity-70" : ""}`}
                         >
-                          <p className="text-sm break-words">
-                            {message.content}
-                          </p>
+                          <p className="text-sm break-words">{message.content}</p>
                         </div>
                         <div
                           className={`flex items-center gap-1 mt-1 ${
@@ -362,11 +341,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                           </span>
                           {isCurrentUser && (
                             <span className="text-xs text-gray-400">
-                              {message.sending
-                                ? "⏳"
-                                : message.read
-                                ? "✓✓"
-                                : "✓"}
+                              {message.sending ? "⏳" : message.read ? "✓✓" : "✓"}
                             </span>
                           )}
                         </div>
