@@ -40,7 +40,7 @@ export default function Signup() {
     setError("");
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/signup`, {
+      const res = await axios.post(`${API_BASE_URL}/api/signup`, {
         name,
         email,
         password,
