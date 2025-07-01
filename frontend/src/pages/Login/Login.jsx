@@ -39,7 +39,7 @@ export default function Login() {
     setError("");
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/login`, {
+      const res = await axios.post(`${API_BASE_URL}/api/login`, {
         email,
         password,
       });
