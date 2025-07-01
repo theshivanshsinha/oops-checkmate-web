@@ -18,7 +18,7 @@ export default function Signup() {
     setError("");
     try {
       const token = credentialResponse.credential;
-      const res = await axios.post(`${API_BASE_URL}/google-auth`, {
+      const res = await axios.post(`${API_BASE_URL}/api/google-auth`, {
         token,
       });
 
