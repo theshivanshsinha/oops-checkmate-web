@@ -2,8 +2,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
-
-const API_BASE_URL = "https://oops-checkmate-web.onrender.com/api";
+import { API_BASE_URL } from "../../config/api";
 
 // Chess logo SVG
 const ChessLogo = () => (

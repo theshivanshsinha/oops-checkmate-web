@@ -26,7 +26,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "node switch-env.js local && react-scripts start",
+    "prod": "node switch-env.js production && react-scripts build",
+    "switch:local": "node switch-env.js local",
+    "switch:prod": "node switch-env.js production"
   },
   "eslintConfig": {
     "extends": [

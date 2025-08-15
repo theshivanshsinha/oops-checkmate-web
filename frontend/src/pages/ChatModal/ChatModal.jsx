@@ -6,6 +6,7 @@ import {
   MoreHorizontal,
   Smile,
 } from "lucide-react";
+import { API_BASE_URL, SERVER_URL } from "../../config/api";
 
 const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
   const [messages, setMessages] = useState([]);
@@ -42,7 +43,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `https://oops-checkmate-web.onrender.com/api/chat/room/${friend.id}`,
+        `${API_BASE_URL}/chat/room/${friend.id}`,
         {
           method: "POST",
           headers: {
@@ -68,7 +69,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
   const loadMessages = async (roomId) => {
     try {
       const response = await fetch(
-        `https://oops-checkmate-web.onrender.com/api/chat/messages/${roomId}`,
+        `${API_BASE_URL}/chat/messages/${roomId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -109,7 +110,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
 
     try {
       const response = await fetch(
-        "https://oops-checkmate-web.onrender.com/api/chat/send",
+        `${API_BASE_URL}/chat/send`,
         {
           method: "POST",
           headers: {
@@ -205,7 +206,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                     src={
                       friend.profilePhoto.startsWith("data:")
                         ? friend.profilePhoto
-                        : `https://oops-checkmate-web.onrender.com/api${friend.profilePhoto}`
+                        : `${SERVER_URL}${friend.profilePhoto}`
                     }
                     alt={friend.name}
                     className="w-full h-full object-cover"
@@ -308,7 +309,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                                   src={
                                     message.senderPhoto.startsWith("data:")
                                       ? message.senderPhoto
-                                      : `https://oops-checkmate-web.onrender.com/api${message.senderPhoto}`
+                                      : `${SERVER_URL}${message.senderPhoto}`
                                   }
                                   alt={message.senderName}
                                   className="w-full h-full object-cover"

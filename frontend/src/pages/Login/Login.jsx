@@ -2,8 +2,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
-
-const API_BASE_URL = "https://oops-checkmate-web.onrender.com";
+import { SERVER_URL } from "../../config/api";
 
 // Chess logo SVG
 const ChessLogo = () => (
@@ -35,7 +34,7 @@ export default function Login() {
     setError("");
     try {
       const token = credentialResponse.credential;
-      const res = await axios.post(`${API_BASE_URL}/api/google-auth`, {
+      const res = await axios.post(`${SERVER_URL}/api/google-auth`, {
         token,
       });
       localStorage.setItem("token", res.data.token);
@@ -53,7 +52,7 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/login`, {
+      const res = await axios.post(`${SERVER_URL}/api/login`, {
         email,
         password,
       });

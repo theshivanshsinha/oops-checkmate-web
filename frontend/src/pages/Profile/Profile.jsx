@@ -69,6 +69,7 @@ import {
   updatePreferences,
 } from "../../store/slices/profileSlice";
 import ChatModal from "../ChatModal/ChatModal"; // Import the ChatModal component
+import { API_BASE_URL, SERVER_URL } from "../../config/api";
 
 // Profile Image Cropper Component
 const ProfileImageCropper = ({ image, onCropComplete, onCancel }) => {
@@ -620,7 +621,7 @@ export default function Profile() {
   const handleChangePassword = async (passwordData) => {
     try {
       const response = await fetch(
-        "https://oops-checkmate-web.onrender.com/api/change-password",
+        `${API_BASE_URL}/change-password`,
         {
           method: "POST",
           headers: {
@@ -648,7 +649,7 @@ export default function Profile() {
   const handleExportData = async () => {
     try {
       const response = await fetch(
-        "https://oops-checkmate-web.onrender.com/api/export-game-data",
+        `${API_BASE_URL}/export-game-data`,
         {
           method: "GET",
           headers: {
@@ -681,7 +682,7 @@ export default function Profile() {
 
   const handleDeleteAccount = async (confirmationData) => {
     try {
-      const response = await fetch("https://oops-checkmate-web.onrender.com/api/delete-account", {
+      const response = await fetch(`${API_BASE_URL}/delete-account`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -785,7 +786,7 @@ export default function Profile() {
                     src={
                       profile.profilePhoto.startsWith("data:")
                         ? profile.profilePhoto
-                        : `https://oops-checkmate-web.onrender.com/api${profile.profilePhoto}`
+                        : `${SERVER_URL}${profile.profilePhoto}`
                     }
                     alt="Profile"
                     className="w-full h-full object-cover"
@@ -1315,7 +1316,7 @@ export default function Profile() {
                                 src={
                                   user.profilePhoto.startsWith("data:")
                                     ? user.profilePhoto
-                                    : `https://oops-checkmate-web.onrender.com/api${user.profilePhoto}`
+                                    : `${SERVER_URL}${user.profilePhoto}`
                                 }
                                 alt={user.name}
                                 className="w-full h-full object-cover"
@@ -1378,7 +1379,7 @@ export default function Profile() {
                                 src={
                                   request.profilePhoto.startsWith("data:")
                                     ? request.profilePhoto
-                                    : `https://oops-checkmate-web.onrender.com/api${request.profilePhoto}`
+                                    : `${SERVER_URL}${request.profilePhoto}`
                                 }
                                 alt={request.name}
                                 className="w-full h-full object-cover"
@@ -1447,7 +1448,7 @@ export default function Profile() {
                                   src={
                                     friend.profilePhoto.startsWith("data:")
                                       ? friend.profilePhoto
-                                      : `https://oops-checkmate-web.onrender.com/api${friend.profilePhoto}`
+                                      : `${SERVER_URL}${friend.profilePhoto}`
                                   }
                                   alt={friend.name}
                                   className="w-full h-full object-cover"
@@ -1541,7 +1542,7 @@ export default function Profile() {
                             src={
                               suggestion.profilePhoto.startsWith("data:")
                                 ? suggestion.profilePhoto
-                                : `https://oops-checkmate-web.onrender.com/api${suggestion.profilePhoto}`
+                                : `${SERVER_URL}${suggestion.profilePhoto}`
                             }
                             alt={suggestion.name}
                             className="w-full h-full object-cover"
