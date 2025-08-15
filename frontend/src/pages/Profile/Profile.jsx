@@ -70,6 +70,7 @@ import {
 } from "../../store/slices/profileSlice";
 import ChatModal from "../ChatModal/ChatModal"; // Import the ChatModal component
 import { API_BASE_URL, SERVER_URL } from "../../config/api";
+import pollingService from "../../services/pollingService";
 
 // Profile Image Cropper Component
 const ProfileImageCropper = ({ image, onCropComplete, onCancel }) => {

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, send_file, make_response
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -18,11 +19,19 @@ import io
 import json
 import zipfile
 import tempfile
+import threading
+import time
 
 app = Flask(__name__)
 
 # Enhanced CORS configuration
 CORS(app, origins=["https://oops-checkmate-web-1.onrender.com", "http://localhost:3000"])
+
+# SocketIO configuration
+socketio = SocketIO(app, cors_allowed_origins=["https://oops-checkmate-web-1.onrender.com", "http://localhost:3000"], async_mode='eventlet', logger=True, engineio_logger=True)
+
+# Online users tracking
+online_users = {}  # {user_id: {'socket_id': socket_id, 'last_seen': timestamp}}
 
 # Handle preflight requests
 @app.before_request
@@ -39,6 +48,159 @@ def after_request(response):
     response.headers.add('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
     response.headers.add('Cross-Origin-Embedder-Policy', 'require-corp')
     return response
+
+# WebSocket Event Handlers
+@socketio.on('connect')
+def handle_connect():
+    print(f"Client connected: {request.sid}")
+    # Get token from auth data
+    auth_data = request.args.get('token') or request.headers.get('Authorization')
+    if auth_data and auth_data.startswith('Bearer '):
+        token = auth_data.split(' ')[1]
+        try:
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            user_id = payload['user_id']
+            print(f"Authenticated user {user_id} connected")
+        except Exception as e:
+            print(f"Authentication failed: {e}")
+    else:
+        print("No authentication token provided")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f"Client disconnected: {request.sid}")
+    # Remove user from online users
+    user_id = None
+    for uid, data in online_users.items():
+        if data['socket_id'] == request.sid:
+            user_id = uid
+            break
+    
+    if user_id:
+        del online_users[user_id]
+        # Notify other users about offline status
+        emit('user_offline', {'user_id': user_id}, broadcast=True, include_self=False)
+
+@socketio.on('user_login')
+def handle_user_login(data):
+    """Handle user login and set online status"""
+    try:
+        token = data.get('token')
+        if not token:
+            return
+        
+        # Verify token
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        user_id = payload['user_id']
+        
+        # Add user to online users
+        online_users[user_id] = {
+            'socket_id': request.sid,
+            'last_seen': datetime.datetime.utcnow()
+        }
+        
+        # Join user to their personal room
+        join_room(f"user_{user_id}")
+        
+        # Notify other users about online status
+        emit('user_online', {'user_id': user_id}, broadcast=True, include_self=False)
+        
+        print(f"User {user_id} logged in and is online")
+        
+    except Exception as e:
+        print(f"Error in user_login: {e}")
+
+@socketio.on('join_chat_room')
+def handle_join_chat_room(data):
+    """Join a specific chat room"""
+    try:
+        room_id = data.get('room_id')
+        if room_id:
+            join_room(f"chat_room_{room_id}")
+            print(f"User joined chat room: {room_id}")
+    except Exception as e:
+        print(f"Error joining chat room: {e}")
+
+@socketio.on('leave_chat_room')
+def handle_leave_chat_room(data):
+    """Leave a specific chat room"""
+    try:
+        room_id = data.get('room_id')
+        if room_id:
+            leave_room(f"chat_room_{room_id}")
+            print(f"User left chat room: {room_id}")
+    except Exception as e:
+        print(f"Error leaving chat room: {e}")
+
+@socketio.on('typing')
+def handle_typing(data):
+    """Handle typing indicator"""
+    try:
+        room_id = data.get('room_id')
+        user_id = data.get('user_id')
+        is_typing = data.get('is_typing', False)
+        
+        if room_id and user_id:
+            emit('user_typing', {
+                'room_id': room_id,
+                'user_id': user_id,
+                'is_typing': is_typing
+            }, room=f"chat_room_{room_id}", include_self=False)
+    except Exception as e:
+        print(f"Error handling typing: {e}")
+
+def emit_new_message(room_id, message_data):
+    """Emit new message to chat room"""
+    try:
+        print(f"Emitting to room chat_room_{room_id}")
+        socketio.emit('new_message', message_data, room=f"chat_room_{room_id}")
+        print(f"Message emitted successfully")
+    except Exception as e:
+        print(f"Error emitting new message: {e}")
+
+def emit_message_read(room_id, user_id):
+    """Emit message read status"""
+    try:
+        socketio.emit('message_read', {
+            'room_id': room_id,
+            'user_id': user_id
+        }, room=f"chat_room_{room_id}")
+    except Exception as e:
+        print(f"Error emitting message read: {e}")
+
+def emit_notification(user_id, notification_data):
+    """Emit notification to specific user"""
+    try:
+        socketio.emit('new_notification', notification_data, room=f"user_{user_id}")
+    except Exception as e:
+        print(f"Error emitting notification: {e}")
+
+# Background task to clean up inactive users
+def cleanup_inactive_users():
+    """Remove users who haven't been active for 5 minutes"""
+    while True:
+        try:
+            current_time = datetime.datetime.utcnow()
+            inactive_users = []
+            
+            for user_id, data in online_users.items():
+                if (current_time - data['last_seen']).total_seconds() > 300:  # 5 minutes
+                    inactive_users.append(user_id)
+            
+            for user_id in inactive_users:
+                del online_users[user_id]
+                emit('user_offline', {'user_id': user_id}, broadcast=True, include_self=False)
+                print(f"User {user_id} marked as offline due to inactivity")
+            
+            time.sleep(60)  # Check every minute
+            
+        except Exception as e:
+            print(f"Error in cleanup task: {e}")
+            time.sleep(60)
+
+# Start cleanup thread
+cleanup_thread = threading.Thread(target=cleanup_inactive_users, daemon=True)
+cleanup_thread.start()
 
 
 
@@ -1183,8 +1345,31 @@ def send_message(current_user):
             'senderPhoto': sender_profile.get('profilePhoto') if sender_profile else None,
             'timestamp': message_data['created_at'],
             'read': False,
-            'type': message_type
+            'type': message_type,
+            'roomId': str(room_id)
         }
+        
+        # Emit new message to chat room via WebSocket
+        print(f"Emitting new message to room {room_id}: {message_response}")
+        emit_new_message(str(room_id), message_response)
+        
+        # Send notification to other participants
+        for participant_id in room['participants']:
+            if str(participant_id) != str(current_user['_id']):
+                participant_user = users_collection.find_one({'_id': participant_id})
+                if participant_user:
+                    notification_data = {
+                        'type': 'new_message',
+                        'title': f'New message from {current_user["name"]}',
+                        'message': content[:50] + ('...' if len(content) > 50 else ''),
+                        'data': {
+                            'roomId': str(room_id),
+                            'senderId': str(current_user['_id']),
+                            'senderName': current_user['name']
+                        },
+                        'timestamp': datetime.datetime.utcnow().isoformat()
+                    }
+                    emit_notification(str(participant_id), notification_data)
         
         return jsonify({
             'message': 'Message sent successfully',
@@ -1193,6 +1378,101 @@ def send_message(current_user):
         
     except Exception as e:
         return jsonify({'error': f'Failed to send message: {str(e)}'}), 500
+
+@app.route('/api/chat/messages/<message_id>/read', methods=['POST'])
+@token_required
+def mark_message_read(current_user, message_id):
+    """Mark a message as read"""
+    try:
+        message_obj_id = ObjectId(message_id)
+        
+        # Update message as read
+        result = messages_collection.update_one(
+            {
+                '_id': message_obj_id,
+                'sender_id': {'$ne': current_user['_id']}  # Only mark others' messages as read
+            },
+            {
+                '$set': {
+                    'read': True,
+                    'read_at': datetime.datetime.utcnow()
+                }
+            }
+        )
+        
+        if result.modified_count > 0:
+            # Get the message to emit read status
+            message = messages_collection.find_one({'_id': message_obj_id})
+            if message:
+                emit_message_read(str(message['room_id']), str(current_user['_id']))
+        
+        return jsonify({'message': 'Message marked as read'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to mark message as read: {str(e)}'}), 500
+
+# Online Status Routes
+@app.route('/api/users/online-status', methods=['GET'])
+@token_required
+def get_online_status(current_user):
+    """Get online status of users"""
+    try:
+        user_ids = request.args.getlist('user_ids[]')
+        if not user_ids:
+            return jsonify({'error': 'No user IDs provided'}), 400
+        
+        status_data = {}
+        for user_id in user_ids:
+            is_online = user_id in online_users
+            status_data[user_id] = {
+                'online': is_online,
+                'last_seen': online_users.get(user_id, {}).get('last_seen') if is_online else None
+            }
+        
+        return jsonify({'status': status_data}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get online status: {str(e)}'}), 500
+
+@app.route('/api/users/online', methods=['GET'])
+@token_required
+def get_online_users(current_user):
+    """Get list of online users"""
+    try:
+        online_user_ids = list(online_users.keys())
+        return jsonify({'online_users': online_user_ids}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get online users: {str(e)}'}), 500
+
+# Notification Routes
+@app.route('/api/notifications', methods=['GET'])
+@token_required
+def get_notifications(current_user):
+    """Get user's notifications"""
+    try:
+        # Get notifications from database (you can add a notifications collection)
+        # For now, we'll return empty array
+        notifications = []
+        return jsonify({'notifications': notifications}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get notifications: {str(e)}'}), 500
+
+@app.route('/api/notifications/mark-read', methods=['POST'])
+@token_required
+def mark_notification_read(current_user):
+    """Mark notification as read"""
+    try:
+        data = request.get_json()
+        notification_id = data.get('notification_id')
+        
+        # Mark notification as read in database
+        # For now, we'll just return success
+        return jsonify({'message': 'Notification marked as read'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to mark notification as read: {str(e)}'}), 500
 
 # Friends System Routes
 @app.route('/api/friends', methods=['GET'])
@@ -1991,5 +2271,5 @@ if __name__ == '__main__':
     print("- Settings: /api/change-password, /api/delete-account, /api/privacy-settings")
     print("- Data: /api/export-game-data, /api/game-history")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 

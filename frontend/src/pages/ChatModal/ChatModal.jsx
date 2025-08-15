@@ -1,34 +1,48 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   MessageCircle,
   Send,
   X,
   MoreHorizontal,
   Smile,
+  Wifi,
+  WifiOff,
+  Clock,
 } from "lucide-react";
 import { API_BASE_URL, SERVER_URL } from "../../config/api";
+import { useWebSocket } from "../../contexts/WebSocketContext";
+import pollingService from "../../services/pollingService";
+import EmojiPicker from "emoji-picker-react";
 
 const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
+  const { socketService, isConnected, onlineUsers } = useWebSocket();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [roomId, setRoomId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [onlineStatus, setOnlineStatus] = useState("online");
+  const [friendTyping, setFriendTyping] = useState(false);
+  const [onlineStatus, setOnlineStatus] = useState("offline");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [lastSeen, setLastSeen] = useState(null);
+  
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const emojiPickerRef = useRef(null);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     if (isOpen && friend) {
       createOrGetChatRoom();
+      checkOnlineStatus();
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 100);
@@ -36,8 +50,88 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
       setMessages([]);
       setNewMessage("");
       setRoomId(null);
+      setFriendTyping(false);
+      if (roomId) {
+        socketService.leaveChatRoom(roomId);
+        pollingService.stopPolling(`messages_${roomId}`);
+      }
     }
   }, [isOpen, friend]);
+
+  // Socket event listeners
+  useEffect(() => {
+    if (!isOpen || !socketService) return;
+
+    const handleNewMessage = (messageData) => {
+      if (messageData.roomId === roomId) {
+        setMessages(prev => [...prev, messageData]);
+        // Mark message as read if chat is open
+        markMessageAsRead(messageData.id);
+      }
+    };
+
+    const handleUserTyping = (typingData) => {
+      if (typingData.room_id === roomId && typingData.user_id === friend.id) {
+        setFriendTyping(typingData.is_typing);
+      }
+    };
+
+    const handleUserOnline = (data) => {
+      if (data.user_id === friend.id) {
+        setOnlineStatus("online");
+        setLastSeen(null);
+      }
+    };
+
+    const handleUserOffline = (data) => {
+      if (data.user_id === friend.id) {
+        setOnlineStatus("offline");
+        setLastSeen(new Date());
+      }
+    };
+
+    // Add event listeners
+    socketService.on('new_message', handleNewMessage);
+    socketService.on('user_typing', handleUserTyping);
+    socketService.on('user_online', handleUserOnline);
+    socketService.on('user_offline', handleUserOffline);
+
+    return () => {
+      socketService.off('new_message', handleNewMessage);
+      socketService.off('user_typing', handleUserTyping);
+      socketService.off('user_online', handleUserOnline);
+      socketService.off('user_offline', handleUserOffline);
+    };
+  }, [isOpen, roomId, friend?.id, socketService]);
+
+  // Handle typing indicator
+  const handleTyping = useCallback((isTyping) => {
+    if (roomId && currentUser?.id) {
+      socketService.sendTyping(roomId, currentUser.id, isTyping);
+    }
+  }, [roomId, currentUser?.id]);
+
+  // Debounced typing indicator
+  useEffect(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    if (newMessage.trim()) {
+      handleTyping(true);
+      typingTimeoutRef.current = setTimeout(() => {
+        handleTyping(false);
+      }, 2000);
+    } else {
+      handleTyping(false);
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [newMessage, handleTyping]);
 
   const createOrGetChatRoom = async () => {
     try {
@@ -56,6 +150,12 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
       if (response.ok) {
         setRoomId(data.roomId);
         await loadMessages(data.roomId);
+        // Join chat room for real-time updates
+        socketService.joinChatRoom(data.roomId);
+        // Start polling as fallback
+        pollingService.startMessagePolling(data.roomId, (newMessages) => {
+          setMessages(newMessages);
+        });
       } else {
         console.error("Error creating chat room:", data.error);
       }
@@ -87,17 +187,91 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
     }
   };
 
+  const checkOnlineStatus = async () => {
+    try {
+      // Check if user is in onlineUsers set
+      const isOnline = onlineUsers.has(friend.id);
+      setOnlineStatus(isOnline ? "online" : "offline");
+      
+      if (!isOnline) {
+        // Fetch last seen from API if not online
+        const response = await fetch(
+          `${API_BASE_URL}/users/online-status?user_ids[]=${friend.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        const data = await response.json();
+        if (response.ok && data.status[friend.id]) {
+          const status = data.status[friend.id];
+          setLastSeen(status.last_seen ? new Date(status.last_seen) : null);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking online status:", error);
+    }
+  };
+
+  // Start polling for online status
+  useEffect(() => {
+    if (isOpen && friend?.id) {
+      pollingService.startOnlineStatusPolling([friend.id], (statusData) => {
+        if (statusData[friend.id]) {
+          const status = statusData[friend.id];
+          setOnlineStatus(status.online ? "online" : "offline");
+          if (!status.online && status.last_seen) {
+            setLastSeen(new Date(status.last_seen));
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (friend?.id) {
+        pollingService.stopPolling(`online_status_${friend.id}`);
+      }
+    };
+  }, [isOpen, friend?.id]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (roomId) {
+        pollingService.stopPolling(`messages_${roomId}`);
+      }
+      if (friend?.id) {
+        pollingService.stopPolling(`online_status_${friend.id}`);
+      }
+    };
+  }, [roomId, friend?.id]);
+
+  const markMessageAsRead = async (messageId) => {
+    try {
+      await fetch(`${API_BASE_URL}/chat/messages/${messageId}/read`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+    } catch (error) {
+      console.error("Error marking message as read:", error);
+    }
+  };
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !roomId || isLoading) return;
 
     const messageContent = newMessage.trim();
     setNewMessage("");
+    setShowEmojiPicker(false);
 
     const tempMessage = {
       id: `temp-${Date.now()}`,
       content: messageContent,
-      senderId: currentUser?.id,
+      senderId: String(currentUser?.id),
       senderName: currentUser?.name,
       senderPhoto: null,
       timestamp: new Date(),
@@ -150,6 +324,11 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
     }
   };
 
+  const onEmojiClick = (emojiObject) => {
+    setNewMessage(prev => prev + emojiObject.emoji);
+    setShowEmojiPicker(false);
+  };
+
   const formatMessageTime = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -168,6 +347,18 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
         minute: "2-digit",
       });
     }
+  };
+
+  const formatLastSeen = (timestamp) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return date.toLocaleDateString();
   };
 
   const groupMessagesByDate = (messages) => {
@@ -195,7 +386,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-2xl w-full max-w-md h-[500px] flex flex-col shadow-2xl">
+      <div className="bg-gray-800 rounded-2xl w-full max-w-md h-[500px] flex flex-col shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-800 rounded-t-2xl">
           <div className="flex items-center gap-3">
@@ -227,23 +418,32 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
             </div>
             <div>
               <h3 className="font-medium text-white">{friend?.name}</h3>
-              <p
-                className={`text-xs ${
-                  onlineStatus === "online"
-                    ? "text-green-400"
+              <div className="flex items-center gap-2">
+                {isConnected ? (
+                  <Wifi size={12} className="text-green-400" />
+                ) : (
+                  <WifiOff size={12} className="text-red-400" />
+                )}
+                <p
+                  className={`text-xs ${
+                    onlineStatus === "online"
+                      ? "text-green-400"
+                      : onlineStatus === "away"
+                      ? "text-yellow-400"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {friendTyping
+                    ? "Typing..."
+                    : onlineStatus === "online"
+                    ? "Online"
                     : onlineStatus === "away"
-                    ? "text-yellow-400"
-                    : "text-gray-400"
-                }`}
-              >
-                {isTyping
-                  ? "Typing..."
-                  : onlineStatus === "online"
-                  ? "Online"
-                  : onlineStatus === "away"
-                  ? "Away"
-                  : "Offline"}
-              </p>
+                    ? "Away"
+                    : lastSeen
+                    ? `Last seen ${formatLastSeen(lastSeen)}`
+                    : "Offline"}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -287,7 +487,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
                 </div>
 
                 {group.messages.map((message, index) => {
-                  const isCurrentUser = message.senderId === currentUser?.id;
+                  const isCurrentUser = String(message.senderId) === String(currentUser?.id);
                   const showAvatar =
                     !isCurrentUser &&
                     (index === 0 ||
@@ -359,7 +559,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
         {/* Message Input */}
         <form
           onSubmit={sendMessage}
-          className="p-4 border-t border-gray-700 bg-gray-800 rounded-b-2xl"
+          className="p-4 border-t border-gray-700 bg-gray-800 rounded-b-2xl relative"
         >
           <div className="flex gap-2 items-end">
             <div className="flex-1 relative">
@@ -384,6 +584,7 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
               />
               <button
                 type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                 className="absolute right-2 bottom-2 p-1 hover:bg-gray-600 rounded-full transition duration-200"
               >
                 <Smile size={16} className="text-gray-400" />
@@ -401,6 +602,21 @@ const ChatModal = ({ isOpen, onClose, friend, currentUser }) => {
             Press Enter to send, Shift+Enter for new line
           </div>
         </form>
+
+        {/* Emoji Picker */}
+        {showEmojiPicker && (
+          <div 
+            ref={emojiPickerRef}
+            className="absolute bottom-20 left-4 z-10"
+          >
+            <EmojiPicker
+              onEmojiClick={onEmojiClick}
+              width={300}
+              height={400}
+              searchPlaceholder="Search emoji..."
+            />
+          </div>
+        )}
       </div>
     </div>
   );

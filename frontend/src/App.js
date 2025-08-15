@@ -7,20 +7,25 @@ import LandingPage from "./pages/LandingPage";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Profile from "./pages/Profile/Profile";
 import ChessGame from "./pages/ChessGame/ChessGame";
+import { WebSocketProvider } from "./contexts/WebSocketContext";
+import WebSocketStatus from "./components/WebSocketStatus";
 
 function App() {
   return (
     <GoogleOAuthProvider clientId="612587465923-6svijnd7e3o1hn9jj1tdnlpvksun9j1p.apps.googleusercontent.com">
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/game/ai" element={<ChessGame />} />
-        </Routes>
-      </Router>
+      <WebSocketProvider>
+        <Router>
+          <WebSocketStatus />
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/game/ai" element={<ChessGame />} />
+          </Routes>
+        </Router>
+      </WebSocketProvider>
     </GoogleOAuthProvider>
   );
 }
